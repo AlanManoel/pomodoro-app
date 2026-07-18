@@ -19,7 +19,7 @@ export const Home = () => {
 
     const [isRunning, setIsRunning] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
-    const [step, setStep] = useState<1 | 2 | 3 | 4>(2)
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
     const [currentState, setCurrentState] = useState<"focus" | "short_break" | "long_break">("focus")
 
     const [currentCicleShortTime, setCurrentShortCicleTime] = useState(5 * 60)

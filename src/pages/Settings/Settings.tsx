@@ -1,6 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, MaterialCommunityIcons, SimpleLineIcons, Ionicons } from "@expo/vector-icons";
 
 import { TSScreenDefinitionsProps } from "@/AppRoutes";
@@ -10,14 +11,61 @@ import { styles } from "./styles";
 
 
 
-
 export const Settings = () => {
     const navigation = useNavigation<TSScreenDefinitionsProps>();
 
-    const [focusPeriod, setFocusPeriod] = useState(15);
+    const [loaded, setLoaded] = useState(false);
+
+    const [notificationActivated, setNotificationActivated] = useState(false);
     const [shortBreakPeriod, setShortBreakPeriod] = useState(3);
     const [longBreakPeriod, setLongBreakPeriod] = useState(10);
-    const [notificationPeriod, setNotificationPeriod] = useState(false);
+    const [focusPeriod, setFocusPeriod] = useState(15);
+
+    useEffect(() => {
+        Promise.all([
+            AsyncStorage.getItem("NOTIFICATION_ACTIVATED"),
+            AsyncStorage.getItem("SHORT_BREAK_PERIOD"),
+            AsyncStorage.getItem("LONG_BREAK_PERIOD"),
+            AsyncStorage.getItem("FOCUS_PERIOD"),
+        ])
+            .then(([notification, short, long, focus]) => {
+                setNotificationActivated(JSON.parse(notification || "true"))
+                setShortBreakPeriod(JSON.parse(short || "3"))
+                setLongBreakPeriod(JSON.parse(long || "10"))
+                setFocusPeriod(JSON.parse(focus || "15"))
+            })
+            .finally(() => {
+                setLoaded(true)
+            })
+    }, [])
+
+    useEffect(() => {
+        if (!loaded) return;
+        AsyncStorage.setItem(
+            "NOTIFICATION_ACTIVATED", JSON.stringify(notificationActivated)
+        );
+    }, [notificationActivated, loaded])
+    
+    useEffect(() => {
+        if (!loaded) return;
+        AsyncStorage.setItem(
+            "SHORT_BREAK_PERIOD", JSON.stringify(shortBreakPeriod)
+        );
+    }, [shortBreakPeriod, loaded])
+
+    useEffect(() => {
+        if (!loaded) return;
+        AsyncStorage.setItem(
+            "LONG_BREAK_PERIOD", JSON.stringify(longBreakPeriod)
+        );
+    }, [longBreakPeriod, loaded])
+
+    useEffect(() => {
+        if (!loaded) return;
+        AsyncStorage.setItem(
+            "FOCUS_PERIOD", JSON.stringify(focusPeriod)
+        );
+    }, [focusPeriod, loaded])
 
     return (
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -120,17 +168,16 @@ export const Settings = () => {
                         <Button
                             style={{ width: 160 }}
                             title="Desativado"
-                            selected={notificationPeriod === false}
-                            onPress={() => setNotificationPeriod(false)}></Button>
+                            selected={notificationActivated === false}
+                            onPress={() => setNotificationActivated(false)}></Button>
 
                         <Button
                             style={{ width: 160 }}
                             title="Ativado"
-                            selected={notificationPeriod === true}
-                            onPress={() => setNotificationPeriod(true)}></Button>
+                            selected={notificationActivated}
+                            onPress={() => setNotificationActivated(true)}></Button>
                     </View>
                 </View>
-
 
                 <View>
                     <View style={styles.containerTip}>

@@ -3,10 +3,20 @@ import { styles } from "./styles";
 
 
 type Props = {
-    selected: boolean;
-}
-export function PomodoroProgress({ selected }: Props) {
-    return (
-        <View style={selected ? styles.pomodoroIndicatorComplet : styles.pomodoroIndicator}></View>
-    )
+  step: 1 | 2 | 3 | 4;
+  index: 1 | 2 | 3 | 4;
+};
+
+export function PomodoroProgress({ step, index }: Props) {
+  const completed = step >= index;
+
+  return (
+    <View
+      style={
+        completed
+          ? styles.pomodoroIndicatorComplet
+          : styles.pomodoroIndicator
+      }
+    />
+  );
 }

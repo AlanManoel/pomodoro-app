@@ -10,7 +10,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { styles } from "./styles"
 import { Button } from "@/shared/components/Button";
 import { PomodoroProgress } from "@/shared/components/PomodoroProgress";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 
 
@@ -20,17 +20,78 @@ export const Home = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [step, setStep] = useState<1 | 2 | 3 | 4>(2)
+    const [currentState, setCurrentState] = useState<"focus" | "short_break" | "long_break">("focus")
 
-    const [currentCicleTime, setCurrentCicleTime] = useState(25 * 60)
-    const [counterCicleTime, setCounterCicleTime] = useState(12.5 * 60)
+    const [currentCicleShortTime, setCurrentShortCicleTime] = useState(5 * 60)
+    const [currentCicleLongTime, setCurrentLongCicleTime] = useState(15 * 60)
+    const [currentFocusTime, setCurrentFocusTime] = useState(25 * 60)
+    const [counterCicleTime, setCounterCicleTime] = useState(25 * 60)
 
     useEffect(() => {
+        if (!isRunning || isPaused) return;
+
         const ref = setInterval(() => {
-            setCounterCicleTime(old => old - 1)
+            setCounterCicleTime(old => old <= 0 ? old : old - 1)
         }, 1000);
 
         return () => clearInterval(ref)
-    }, [])
+    }, [isRunning, isPaused])
+
+    useEffect(() => {
+        switch (currentState) {
+            case "focus":
+                {
+                    if (counterCicleTime > 0) break;
+
+                    if (step < 4) {
+                        setCurrentState("short_break");
+                        setStep(old => (old + 1) as 1)
+                        setCounterCicleTime(currentCicleShortTime);
+                    } else {
+                        setCurrentState("long_break");
+                        setStep(1)
+                        setCounterCicleTime(currentCicleLongTime);
+                    }
+                    break;
+                }
+            case "short_break":
+            case "long_break":
+                {
+                    if (counterCicleTime <= 0) {
+                        setCurrentState("focus");
+                        setCounterCicleTime(currentFocusTime);
+                    }
+                    break;
+                }
+        }
+    }, [counterCicleTime, currentState, step, currentCicleShortTime, currentCicleLongTime])
+
+    const timeProgress = useMemo(() => {
+        switch (currentState) {
+            case "focus": return 100 - (counterCicleTime / currentFocusTime) * 100;
+            case "short_break": return 100 - (counterCicleTime / currentCicleShortTime) * 100;
+            case "long_break": return 100 - (counterCicleTime / currentCicleLongTime) * 100;
+        }
+    }, [currentState, counterCicleTime, currentFocusTime, currentCicleShortTime, currentCicleLongTime]);
+
+    const handleStart = () => {
+        setIsRunning(true);
+        setIsPaused(false);
+    }
+    const handlePause = () => {
+        setIsPaused(true)
+    }
+    const handleStop = () => {
+        setStep(1);
+        setIsRunning(false);
+        setIsPaused(false);
+        setCounterCicleTime(currentFocusTime)
+    }
+    const handleContinue = () => {
+        setIsPaused(false)
+    }
+
+
 
     return (
         <View style={styles.container} >
@@ -47,7 +108,7 @@ export const Home = () => {
                 <AnimatedCircularProgress
                     size={300}
                     width={8}
-                    fill={100 - (counterCicleTime / currentCicleTime) * 100}
+                    fill={timeProgress}
                     tintColor={Theme.colors.secundary}
                     backgroundColor={Theme.colors.primary}
                     rotation={0}
@@ -56,21 +117,21 @@ export const Home = () => {
                     </Text>}
                 />
                 {!isRunning && (
-                    <Button title="Iniciar" selected={true} onPress={() => { setIsRunning(true); setIsPaused(false) }} />
+                    <Button title="Iniciar" selected={true} onPress={handleStart} />
                 )}
 
                 {isRunning && !isPaused && (
                     <View style={styles.containerBottom}>
-                        <Button title="Pausar" selected={true} onPress={() => { setIsRunning(true); setIsPaused(true) }} />
-                        <Button title="Parar" selected={false} onPress={() => { setIsRunning(false); setIsPaused(false); }} />
+                        <Button title="Pausar" selected={true} onPress={handlePause} />
+                        <Button title="Parar" selected={false} onPress={handleStop} />
                     </View>
 
                 )}
 
                 {isRunning && isPaused && (
                     <View style={styles.containerBottom}>
-                        <Button title="Continuar" selected={true} onPress={() => { setIsPaused(false); setIsRunning(true) }} />
-                        <Button title="Reniciar" selected={false} onPress={() => { setIsRunning(false); setIsPaused(false); }} />
+                        <Button title="Continuar" selected={true} onPress={handleContinue} />
+                        <Button title="Parar" selected={false} onPress={handleStop} />
                     </View>
                 )}
             </View>

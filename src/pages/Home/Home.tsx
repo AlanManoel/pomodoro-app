@@ -1,6 +1,7 @@
-import { useNavigation } from "@react-navigation/native"
+import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import { Text, TouchableOpacity, View } from "react-native"
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
@@ -10,7 +11,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { styles } from "./styles"
 import { Button } from "@/shared/components/Button";
 import { PomodoroProgress } from "@/shared/components/PomodoroProgress";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 
 
@@ -20,12 +21,34 @@ export const Home = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+    const [completedPomodoros, setCompletedPomodoros] = useState(0);
     const [currentState, setCurrentState] = useState<"focus" | "short_break" | "long_break">("focus")
 
-    const [currentCicleShortTime, setCurrentShortCicleTime] = useState(5 * 60)
-    const [currentCicleLongTime, setCurrentLongCicleTime] = useState(15 * 60)
-    const [currentFocusTime, setCurrentFocusTime] = useState(25 * 60)
+    const [currentCicleShortTime, setCurrentCicleShortTime] = useState(3 * 60)
+    const [currentCicleLongTime, setCurrentCicleLongTime] = useState(15 * 60)
+    const [currentFocusTime, setCurrentFocusTime] = useState(10 * 60)
+
     const [counterCicleTime, setCounterCicleTime] = useState(25 * 60)
+
+
+    useFocusEffect(useCallback(() => {
+        Promise.all([
+            AsyncStorage.getItem("SHORT_BREAK_PERIOD"),
+            AsyncStorage.getItem("LONG_BREAK_PERIOD"),
+            AsyncStorage.getItem("FOCUS_PERIOD"),
+        ])
+            .then(([short, long, focus]) => {
+                setCurrentCicleShortTime(JSON.parse(short || "3") * 60)
+                setCurrentCicleLongTime(JSON.parse(long || "10") * 60)
+                setCurrentFocusTime(JSON.parse(focus || "15") * 60)
+                setCounterCicleTime(JSON.parse(focus || "15") * 60)
+            })
+    }, []))
+
+    useEffect(() => {
+        AsyncStorage.getItem("APP_STATE")
+            .then(value => { console.log(value) })
+    }, [])
 
     useEffect(() => {
         if (!isRunning || isPaused) return;
@@ -42,29 +65,48 @@ export const Home = () => {
             case "focus":
                 {
                     if (counterCicleTime > 0) break;
+                    setCompletedPomodoros((old) => old + 1);
 
                     if (step < 4) {
                         setCurrentState("short_break");
-                        setStep(old => (old + 1) as 1)
+                        setStep(old => (old + 1) as 2 | 3 | 4)
                         setCounterCicleTime(currentCicleShortTime);
                     } else {
                         setCurrentState("long_break");
-                        setStep(1)
                         setCounterCicleTime(currentCicleLongTime);
                     }
                     break;
                 }
-            case "short_break":
+            case "short_break": {
+                if (counterCicleTime <= 0) {
+                    setCurrentState("focus");
+                    setCounterCicleTime(currentFocusTime);
+                }
+                break;
+            }
             case "long_break":
                 {
                     if (counterCicleTime <= 0) {
+                        setStep(1);
+                        setCompletedPomodoros(0);
                         setCurrentState("focus");
                         setCounterCicleTime(currentFocusTime);
                     }
                     break;
                 }
         }
-    }, [counterCicleTime, currentState, step, currentCicleShortTime, currentCicleLongTime])
+        AsyncStorage.setItem("APP_STATE", JSON.stringify({
+            time: Date.now(),
+            isRunning,
+            isPaused,
+            counterCicleTime,
+            currentState,
+            step,
+            currentCicleShortTime,
+            currentCicleLongTime,
+            currentFocusTime
+        }))
+    }, [counterCicleTime, currentState, step, currentCicleShortTime, currentCicleLongTime, isPaused, isRunning])
 
     const timeProgress = useMemo(() => {
         switch (currentState) {
@@ -83,6 +125,7 @@ export const Home = () => {
     }
     const handleStop = () => {
         setStep(1);
+        setCompletedPomodoros(0);
         setIsRunning(false);
         setIsPaused(false);
         setCounterCicleTime(currentFocusTime)
@@ -142,10 +185,10 @@ export const Home = () => {
                     <Text style={styles.subtitlePomodoro}>Sessão de hoje</Text>
                 </View>
                 <View style={styles.containerProgessPomodoro}>
-                    <PomodoroProgress step={step} index={1} />
-                    <PomodoroProgress step={step} index={2} />
-                    <PomodoroProgress step={step} index={3} />
-                    <PomodoroProgress step={step} index={4} />
+                    <PomodoroProgress completed={completedPomodoros} index={1} />
+                    <PomodoroProgress completed={completedPomodoros} index={2} />
+                    <PomodoroProgress completed={completedPomodoros} index={3} />
+                    <PomodoroProgress completed={completedPomodoros} index={4} />
                 </View>
 
             </View>
@@ -153,4 +196,3 @@ export const Home = () => {
         </View>
     )
 }
-

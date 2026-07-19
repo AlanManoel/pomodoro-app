@@ -3,17 +3,17 @@ import { styles } from "./styles";
 
 
 type Props = {
-  step: 1 | 2 | 3 | 4;
+  completed: number;
   index: 1 | 2 | 3 | 4 ;
 };
 
-export function PomodoroProgress({ step, index }: Props) {
-  const completed = step >= index;
+export function PomodoroProgress({ completed, index }: Props) {
+  const iscompleted = completed >= index;
 
   return (
     <View
       style={
-        completed
+        iscompleted
           ? styles.pomodoroIndicatorComplet
           : styles.pomodoroIndicator
       }

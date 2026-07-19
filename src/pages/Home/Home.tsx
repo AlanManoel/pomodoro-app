@@ -36,19 +36,33 @@ export const Home = () => {
     const [counterCicleTime, setCounterCicleTime] = useState(25 * 60)
 
 
-    useFocusEffect(useCallback(() => {
-        Promise.all([
-            AsyncStorage.getItem("SHORT_BREAK_PERIOD"),
-            AsyncStorage.getItem("LONG_BREAK_PERIOD"),
-            AsyncStorage.getItem("FOCUS_PERIOD"),
-        ])
-            .then(([short, long, focus]) => {
-                setCurrentCicleShortTime(JSON.parse(short || "3") * 60)
-                setCurrentCicleLongTime(JSON.parse(long || "10") * 60)
-                setCurrentFocusTime(JSON.parse(focus || "15") * 60)
-                setCounterCicleTime(JSON.parse(focus || "15") * 60)
-            })
-    }, []))
+    useFocusEffect(
+        useCallback(() => {
+            Promise.all([
+                AsyncStorage.getItem("SHORT_BREAK_PERIOD"),
+                AsyncStorage.getItem("LONG_BREAK_PERIOD"),
+                AsyncStorage.getItem("FOCUS_PERIOD"),
+            ]).then(([short, long, focus]) => {
+                const shortTime = JSON.parse(short || "3") * 60;
+                const longTime = JSON.parse(long || "10") * 60;
+                const focusTime = JSON.parse(focus || "15") * 60;
+
+                setCurrentCicleShortTime(shortTime);
+                setCurrentCicleLongTime(longTime);
+                setCurrentFocusTime(focusTime);
+
+                if (!isRunning || isPaused) {
+                    if (currentState === "focus") {
+                        setCounterCicleTime(focusTime);
+                    } else if (currentState === "short_break") {
+                        setCounterCicleTime(shortTime);
+                    } else {
+                        setCounterCicleTime(longTime);
+                    }
+                }
+            });
+        }, [isRunning, isPaused, currentState])
+    );
 
     useEffect(() => {
         if (!isRunning || isPaused) return;
@@ -59,8 +73,6 @@ export const Home = () => {
 
         return () => clearInterval(ref)
     }, [isRunning, isPaused])
-
-
 
 
     useEffect(() => {
@@ -199,12 +211,15 @@ export const Home = () => {
 
     return (
         <View style={styles.container} >
-            <TouchableOpacity style={styles.buttonSettings} onPress={() => navigation.navigate("Settings")}>
-                <MaterialIcons name="settings"
-                    size={28}
-                    color={Theme.colors.primary} />
-            </TouchableOpacity>
-
+            {(!isRunning || isPaused) && (
+                <TouchableOpacity style={styles.buttonSettings} onPress={() => navigation.navigate("Settings")} >
+                    <MaterialIcons
+                        name="settings"
+                        size={28}
+                        color={Theme.colors.primary}
+                    />
+                </TouchableOpacity>
+            )}
 
             <Text style={styles.titleText}>Pomodoro</Text>
 

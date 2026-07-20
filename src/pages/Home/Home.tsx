@@ -11,6 +11,7 @@ import { styles } from "./styles"
 import { Button } from "@/shared/components/Button";
 import { PomodoroProgress } from "@/shared/components/PomodoroProgress";
 import { updateStateByElapsedTime } from "@/shared/helpers/UpdateStateByElpasedTime";
+import { NotificationService } from "@/shared/services/NotificationService";
 
 
 
@@ -18,6 +19,7 @@ export const Home = () => {
     const navigation = useNavigation<TSScreenDefinitionsProps>();
 
     const [appRunningState, setAppRunningState] = useState(AppState.currentState)
+
     useEffect(() => {
         const listener = AppState.addEventListener("change", setAppRunningState);
         return () => listener.remove()
@@ -32,6 +34,7 @@ export const Home = () => {
     const [currentCicleShortTime, setCurrentCicleShortTime] = useState(3 * 60)
     const [currentCicleLongTime, setCurrentCicleLongTime] = useState(15 * 60)
     const [currentFocusTime, setCurrentFocusTime] = useState(10 * 60)
+    const [notificationActivated, setNotificationActivated] = useState(false)
 
     const [counterCicleTime, setCounterCicleTime] = useState(25 * 60)
 
@@ -42,7 +45,8 @@ export const Home = () => {
                 AsyncStorage.getItem("SHORT_BREAK_PERIOD"),
                 AsyncStorage.getItem("LONG_BREAK_PERIOD"),
                 AsyncStorage.getItem("FOCUS_PERIOD"),
-            ]).then(([short, long, focus]) => {
+                AsyncStorage.getItem("NOTIFICATION_ACTIVATED"),
+            ]).then(([short, long, focus, notificationActivated]) => {
                 const shortTime = JSON.parse(short || "3") * 60;
                 const longTime = JSON.parse(long || "10") * 60;
                 const focusTime = JSON.parse(focus || "15") * 60;
@@ -50,6 +54,8 @@ export const Home = () => {
                 setCurrentCicleShortTime(shortTime);
                 setCurrentCicleLongTime(longTime);
                 setCurrentFocusTime(focusTime);
+                setNotificationActivated(JSON.parse(notificationActivated || "false"));
+
 
                 if (!isRunning || isPaused) {
                     if (currentState === "focus") {
@@ -147,7 +153,24 @@ export const Home = () => {
         }
     }, [appRunningState])
 
-    const handleStart = () => {
+    useEffect(() => {
+        if(!notificationActivated){
+            NotificationService.deactivateNotification();
+            return;
+        }
+        if (appRunningState !== "active" && !isPaused && isRunning) {
+            NotificationService.activateNotification();
+        } else {
+            NotificationService.deactivateNotification();
+        }
+    }, [appRunningState, isPaused, isRunning, notificationActivated])
+
+    useEffect(() => {
+
+        NotificationService.requestePermission();
+    }, [])
+
+    const handleStart = async () => {
         setIsRunning(true);
         setIsPaused(false);
         AsyncStorage.setItem("APP_STATE", JSON.stringify({
@@ -161,6 +184,7 @@ export const Home = () => {
             currentCicleShortTime,
             currentFocusTime,
         }))
+
     }
     const handlePause = () => {
         setIsPaused(true)
